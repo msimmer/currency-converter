@@ -9,7 +9,8 @@ iPhone from Safari and it runs full-screen like a native app, and keeps working 
 - **Converter**: the top "You convert" card plus any number of currencies, including gold,
   silver, platinum and palladium (per troy oz). Tap any amount to edit it; every other row updates.
 - **Calculator keypad**: + − × ÷ right in the amount, e.g. `2836.97 + 1000 × 1.05`.
-  The result updates live, `=` collapses the sum, and Done closes the keypad.
+  The result updates live, `=` collapses the sum, and Done closes the keypad. Keys respond on
+  touch-down with a click sound (silent when the phone is on silent).
 - **Currency menu** (tap a currency's code): change currency, chart it, make it the
   "You convert" currency, or remove it.
 - **Send money** (in a currency's menu): sends from the "You convert" currency to that one
@@ -57,6 +58,7 @@ js/app.js             UI: converter, keypad, menus, picker sheet, charts view, t
 js/calc.js            keypad calculator (+ − × ÷)
 js/send.js            Send money destinations: templates, URLs, backup codes
 js/settings.js        Settings tab and destination editor
+js/sound.js           keypad click sound
 js/ui.js              shared modal / action sheet / toast helpers
 js/rates.js           rate fetching, conversion, history
 js/currencies.js      currency list, names, flags, number formatting

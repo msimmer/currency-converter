@@ -14,6 +14,7 @@ import {
 } from './ui.js';
 import { buildURL, openURL, problem, TYPES } from './send.js';
 import { destinationLabel, getDestinations, initSettings } from './settings.js';
+import { playClick, unlockAudio } from './sound.js';
 
 // ---- State -----------------------------------------------------------------
 
@@ -169,6 +170,7 @@ listEl.addEventListener('click', (e) => {
     return openActions(code);
   }
   if (e.target.closest('.clear')) return calcKey('clear');
+  unlockAudio();
   startCalc(code);
 });
 
@@ -327,10 +329,39 @@ function calcKey(key) {
   refreshRows();
 }
 
-keypad.addEventListener('click', (e) => {
+function pressKey(btn) {
+  playClick();
+  calcKey(btn.dataset.key);
+}
+
+// Keys act on touch-down, without waiting for the finger to lift, so fast
+// two-thumb typing doesn't drop taps. Done waits for the click, so the tap
+// can't land on whatever is under the keypad as it slides away.
+let pressedKey = null;
+keypad.addEventListener('pointerdown', (e) => {
   const btn = e.target.closest('[data-key]');
-  if (btn) calcKey(btn.dataset.key);
+  if (!btn || e.button > 0) return;
+  e.preventDefault();
+  btn.classList.add('pressed');
+  if (btn.dataset.key === 'done') return;
+  pressedKey = btn;
+  pressKey(btn);
 });
+for (const type of ['pointerup', 'pointercancel', 'pointerout']) {
+  keypad.addEventListener(type, (e) => e.target.closest('[data-key]')?.classList.remove('pressed'));
+}
+keypad.addEventListener('click', (e) => {
+  unlockAudio();
+  const btn = e.target.closest('[data-key]');
+  if (!btn) return;
+  // Already handled on pointerdown; keyboard and VoiceOver presses only click.
+  if (btn === pressedKey) {
+    pressedKey = null;
+    return;
+  }
+  pressKey(btn);
+});
+keypad.addEventListener('touchend', unlockAudio, { passive: true });
 
 // Hardware keyboard support (desktop, iPad keyboards).
 document.addEventListener('keydown', (e) => {

@@ -1,7 +1,7 @@
 // Offline support: app shell cached, latest rates network-first,
 // dated history snapshots cache-first (they never change).
 
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL = `shell-${VERSION}`;
 const DATA = 'data-v1';
 
@@ -16,6 +16,7 @@ const SHELL_FILES = [
   'js/rates.js',
   'js/send.js',
   'js/settings.js',
+  'js/sound.js',
   'js/ui.js',
   'manifest.webmanifest',
   'icons/icon.svg',

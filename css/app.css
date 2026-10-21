@@ -465,8 +465,10 @@ body.keypad-open .keypad { transform: translateY(0); }
   background: var(--accent);
   color: #fff;
 }
-.keypad-ops button:active { background: var(--card-press); }
-.keypad-ops button.done:active { opacity: 0.85; }
+.keypad-ops button:active,
+.keypad-ops button.pressed { background: var(--card-press); }
+.keypad-ops button.done:active,
+.keypad-ops button.done.pressed { background: var(--accent); opacity: 0.85; }
 
 .keypad-keys {
   display: grid;
@@ -486,7 +488,8 @@ body.keypad-open .keypad { transform: translateY(0); }
   place-items: center;
 }
 .keypad-keys button.flat { background: transparent; box-shadow: none; }
-.keypad-keys button:active { background: var(--card-press); }
+.keypad-keys button:active,
+.keypad-keys button.pressed { background: var(--card-press); }
 
 /* ---- Action sheet ------------------------------------------------------- */
 

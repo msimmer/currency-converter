@@ -9,6 +9,11 @@ import { createChart } from './chart.js';
 import {
   OPS, display as displayExpr, evaluate, hasOperator, press,
 } from './calc.js';
+import {
+  $, actionSheet, esc, hideModal, ICONS, showModal, toast,
+} from './ui.js';
+import { buildURL, openURL, problem, TYPES } from './send.js';
+import { destinationLabel, getDestinations, initSettings } from './settings.js';
 
 // ---- State -----------------------------------------------------------------
 
@@ -38,8 +43,6 @@ function saveState() {
   try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch { /* ignore */ }
 }
 
-const $ = (sel) => document.querySelector(sel);
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 const CHEVRON = '<svg class="chev" viewBox="0 0 24 24" width="18" height="18"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
 
@@ -342,64 +345,61 @@ document.addEventListener('keydown', (e) => {
 
 // ---- Row actions -----------------------------------------------------------
 
-let actionHandlers = {};
-
 function openActions(code) {
   const hero = state.list[0];
   const other = code === hero ? state.list[1] : hero;
-  const icon = (d) => `<svg viewBox="0 0 24 24" width="22" height="22"><path d="${d}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`;
   const items = [
-    ['change', 'Change currency', icon('M4 8h14l-4-4M20 16H6l4 4')],
-    other && ['chart', `Chart ${code}/${other}`, icon('M4 20V13M9.3 20V8M14.6 20v-6M20 20V5')],
-    code !== hero && ['top', 'Make “You convert”', icon('M12 19V5M5 12l7-7 7 7')],
-    ['remove', 'Remove', icon('M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13'), 'danger'],
+    code !== hero && { label: `Send ${hero} → ${code}`, icon: ICONS.send, run: () => sendMoney(code) },
+    { label: 'Change currency', icon: ICONS.swap, run: () => openSheet({ mode: 'pick', current: code, onPick: (c) => replaceCurrency(code, c) }) },
+    other && { label: `Chart ${code}/${other}`, icon: ICONS.chart, run: () => openChart(code, other) },
+    code !== hero && { label: 'Make “You convert”', icon: ICONS.up, run: () => moveToTop(code) },
+    { label: 'Remove', icon: ICONS.trash, danger: true, run: () => removeCurrency(code) },
   ].filter(Boolean);
 
-  actionHandlers = {
-    change: () => openSheet({ mode: 'pick', current: code, onPick: (c) => replaceCurrency(code, c) }),
-    chart: () => openChart(code, other),
-    top: () => moveToTop(code),
-    remove: () => removeCurrency(code),
-  };
-
-  $('#actions-body').innerHTML = `
-    <div class="action-title">${badgeHTML(code)}
+  actionSheet({
+    header: `<div class="action-title">${badgeHTML(code)}
       <div><div class="code">${code}</div><div class="sub">${esc(currencySubtitle(code))}</div></div>
-    </div>
-    ${items.map(([act, label, svg, cls = '']) => `
-      <button type="button" class="action ${cls}" data-act="${act}">${svg}<span>${esc(label)}</span></button>`).join('')}`;
-  showModal($('#actions'), $('#actions-backdrop'));
+    </div>`,
+    items,
+  });
 }
 
-function closeActions() {
-  hideModal($('#actions'), $('#actions-backdrop'));
+// ---- Send money ------------------------------------------------------------
+
+/** Token values for a send from the "You convert" currency to `to`. */
+function sendValues(to) {
+  const from = state.list[0] ?? 'USD';
+  return {
+    amount: formatAmount(amountIn(from), from),
+    from,
+    receive: formatAmount(amountIn(to), to),
+    to,
+    rate: formatRate(rate(from, to)),
+    date: rates ? fmtISO(rates.date) : '',
+  };
 }
 
-$('#actions').addEventListener('click', (e) => {
-  const btn = e.target.closest('[data-act]');
-  if (!btn) return;
-  closeActions();
-  actionHandlers[btn.dataset.act]?.();
-});
-$('#actions-backdrop').addEventListener('click', closeActions);
-
-function showModal(el, backdrop) {
-  el.hidden = false;
-  backdrop.hidden = false;
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    el.classList.add('open');
-    backdrop.classList.add('open');
-  }));
-}
-
-function hideModal(el, backdrop) {
-  el.classList.remove('open');
-  backdrop.classList.remove('open');
-  setTimeout(() => {
-    if (el.classList.contains('open')) return;
-    el.hidden = true;
-    backdrop.hidden = true;
-  }, 280);
+function sendMoney(to) {
+  const dests = getDestinations();
+  if (!dests.length) {
+    switchTab('settings');
+    toast('Add a destination for Send money');
+    return;
+  }
+  const values = sendValues(to);
+  const go = (d) => {
+    const p = problem(d);
+    if (p) toast(p);
+    else openURL(buildURL(d, values));
+  };
+  if (dests.length === 1) return go(dests[0]);
+  actionSheet({
+    header: `<div class="action-title"><div>
+      <div class="code">Send ${esc(values.amount)} ${values.from} → ${values.to}</div>
+      <div class="sub">About ${esc(values.receive)} ${values.to}</div>
+    </div></div>`,
+    items: dests.map((d) => ({ label: destinationLabel(d), icon: ICONS[TYPES[d.type].icon], run: () => go(d) })),
+  });
 }
 
 // ---- Status pill -----------------------------------------------------------
@@ -699,7 +699,11 @@ for (const [id, idx] of [['#pair-from', 0], ['#pair-to', 1]]) {
 
 // ---- Tabs ------------------------------------------------------------------
 
+const TABS = ['converter', 'charts', 'settings'];
+
+// The current tab is saved, so the app reopens where you left off.
 function switchTab(tab) {
+  if (!TABS.includes(tab)) tab = 'converter';
   finishCalc();
   state.tab = tab;
   saveState();
@@ -716,6 +720,7 @@ document.querySelector('.tabbar').addEventListener('click', (e) => {
 
 // ---- Boot ------------------------------------------------------------------
 
+initSettings({ sampleValues: () => sendValues(state.list[1] ?? (state.list[0] === 'EUR' ? 'USD' : 'EUR')) });
 renderList();
 renderStatus();
 switchTab(state.tab);

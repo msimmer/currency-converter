@@ -1,7 +1,7 @@
 // Offline support: app shell cached, latest rates network-first,
 // dated history snapshots cache-first (they never change).
 
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL = `shell-${VERSION}`;
 const DATA = 'data-v1';
 
@@ -14,6 +14,9 @@ const SHELL_FILES = [
   'js/chart.js',
   'js/currencies.js',
   'js/rates.js',
+  'js/send.js',
+  'js/settings.js',
+  'js/ui.js',
   'manifest.webmanifest',
   'icons/icon.svg',
   'icons/apple-touch-icon.png',

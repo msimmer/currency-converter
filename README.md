@@ -12,10 +12,18 @@ iPhone from Safari and it runs full-screen like a native app, and keeps working 
   The result updates live, `=` collapses the sum, and Done closes the keypad.
 - **Currency menu** (tap a currency's code): change currency, chart it, make it the
   "You convert" currency, or remove it.
+- **Send money** (in a currency's menu): sends from the "You convert" currency to that one
+  through a destination you set up in **Settings**:
+  - **Link**: any web page or app link (`yourbank://…`)
+  - **Shortcut**: runs an iOS Shortcut by name, which can open any app
+  - **Email**: opens Mail with a filled-in message
+
+  Templates accept `{amount}` `{from}` `{receive}` `{to}` `{rate}` `{date}`. Destinations are
+  stored only on the device, never in this repo; **Copy setup code** / **Restore** back them up.
 - **Edit** (pencil): remove currencies or drag the ☰ handles to reorder them.
 - **Charts**: any pair, ranges from 1W to 10Y, drag across the chart to read values, and
   open/close/high/low/average/spread.
-- Light and dark mode, safe-area aware, offline cache.
+- Reopens on the screen you last used. Light and dark mode, safe-area aware, offline cache.
 
 ## Data sources (free, no API key)
 
@@ -47,6 +55,9 @@ index.html            app shell
 css/app.css           iOS-style styling, light/dark tokens
 js/app.js             UI: converter, keypad, menus, picker sheet, charts view, tabs
 js/calc.js            keypad calculator (+ − × ÷)
+js/send.js            Send money destinations: templates, URLs, backup codes
+js/settings.js        Settings tab and destination editor
+js/ui.js              shared modal / action sheet / toast helpers
 js/rates.js           rate fetching, conversion, history
 js/currencies.js      currency list, names, flags, number formatting
 icons/flags/          circular flags from HatScripts/circle-flags (MIT)

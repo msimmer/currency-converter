@@ -1,7 +1,7 @@
 // Offline support: app shell cached, latest rates network-first,
 // dated history snapshots cache-first (they never change).
 
-const VERSION = 'v4';
+const VERSION = 'v5';
 const SHELL = `shell-${VERSION}`;
 const DATA = 'data-v1';
 

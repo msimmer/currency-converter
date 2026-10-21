@@ -32,16 +32,21 @@ export function playClick() {
   source.start();
 }
 
-// A short, soft tick: a bright tone plus a little noise, gone in ~12ms.
+// A soft, low "tock" like the iOS keyboard: a damped ~950 Hz knock with a
+// muffled noise transient, eased in so the onset isn't sharp.
 function makeClick(context) {
   const rate = context.sampleRate;
-  const buf = context.createBuffer(1, Math.round(rate * 0.012), rate);
+  const buf = context.createBuffer(1, Math.round(rate * 0.03), rate);
   const data = buf.getChannelData(0);
+  const smoothing = 1 - Math.exp((-2 * Math.PI * 1200) / rate); // ~1.2 kHz low-pass
+  let noise = 0;
   for (let i = 0; i < data.length; i++) {
     const t = i / rate;
-    const tone = Math.sin(2 * Math.PI * 3200 * t) * 0.6;
-    const noise = (Math.random() * 2 - 1) * 0.4;
-    data[i] = (tone + noise) * Math.exp(-t * 600) * 0.35;
+    noise += smoothing * ((Math.random() * 2 - 1) - noise);
+    const knock = Math.sin(2 * Math.PI * 950 * t) * Math.exp(-t / 0.006);
+    const transient = noise * Math.exp(-t / 0.0015);
+    const attack = Math.min(1, t / 0.0005);
+    data[i] = attack * (0.8 * knock + 0.6 * transient) * 0.12;
   }
   return buf;
 }

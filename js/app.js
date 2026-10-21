@@ -120,6 +120,8 @@ function renderList() {
   $('#list-empty').hidden = state.list.length > 0;
   $('#edit-btn').classList.toggle('active', editing);
   $('#edit-btn').setAttribute('aria-label', editing ? 'Done editing' : 'Edit list');
+  // Add lives with editing: the + appears opposite the ✓ while the list is in edit mode.
+  $('#add-btn').classList.toggle('placeholder', !editing);
   refreshRows();
 }
 
@@ -740,7 +742,6 @@ function switchTab(tab) {
   saveState();
   for (const view of document.querySelectorAll('.view')) view.hidden = view.dataset.view !== tab;
   for (const btn of document.querySelectorAll('.tab')) btn.classList.toggle('active', btn.dataset.tab === tab);
-  $('.dock').classList.toggle('no-fab', tab !== 'converter');
   if (tab === 'charts') loadChart();
 }
 

@@ -23,7 +23,9 @@
     <!-- Converter -->
     <section class="view" data-view="converter">
       <header class="topbar">
-        <span class="round-btn placeholder"></span>
+        <button class="round-btn placeholder" id="add-btn" type="button" aria-label="Add currency">
+          <svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
+        </button>
         <button class="status-pill" id="status-pill" type="button">
           <span id="status-text">Loading rates…</span>
           <svg class="refresh-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
@@ -122,9 +124,6 @@
           <span>Settings</span>
         </button>
       </div>
-      <button class="fab" id="add-btn" type="button" aria-label="Add currency">
-        <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
-      </button>
     </nav>
   </div>
 

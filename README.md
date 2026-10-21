@@ -21,7 +21,7 @@ iPhone from Safari and it runs full-screen like a native app, and keeps working 
 
   Templates accept `{amount}` `{from}` `{receive}` `{to}` `{rate}` `{date}`. Destinations are
   stored only on the device, never in this repo; **Copy setup code** / **Restore** back them up.
-- **Edit** (pencil): remove currencies or drag the ☰ handles to reorder them.
+- **Edit** (pencil): add currencies with +, remove them, or drag the ☰ handles to reorder them.
 - **Charts**: any pair, ranges from 1W to 10Y, drag across the chart to read values, and
   open/close/high/low/average/spread.
 - Reopens on the screen you last used. Light and dark mode, safe-area aware, offline cache.

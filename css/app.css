@@ -373,7 +373,7 @@ body.keypad-open .scroller { padding-bottom: calc(var(--keypad-h, 360px) + 24px)
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes blink { 50% { opacity: 0; } }
 
-/* ---- Dock (tab bar + action button) ------------------------------------ */
+/* ---- Dock (tab bar) ---------------------------------------------------- */
 
 .dock {
   position: absolute;
@@ -381,8 +381,6 @@ body.keypad-open .scroller { padding-bottom: calc(var(--keypad-h, 360px) + 24px)
   right: 0;
   bottom: 0;
   display: flex;
-  align-items: center;
-  gap: 12px;
   padding: 28px 20px calc(env(safe-area-inset-bottom) + 10px);
   background: linear-gradient(to bottom, transparent, var(--bg) 45%);
   pointer-events: none;
@@ -415,18 +413,6 @@ body.keypad-open .dock { transform: translateY(100%); opacity: 0; }
 }
 .tab.active { background: var(--card); color: var(--accent); }
 
-.fab {
-  flex: none;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--raised);
-  box-shadow: var(--shadow);
-}
-.fab:active { background: var(--card); }
-.dock.no-fab .fab { visibility: hidden; }
 
 /* ---- Keypad ------------------------------------------------------------- */
 

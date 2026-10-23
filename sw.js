@@ -1,7 +1,8 @@
 // Offline support: app shell cached, latest rates network-first,
 // dated history snapshots cache-first (they never change).
+// Also shows rate alert pushes (see js/alerts.js and worker/).
 
-const VERSION = 'v6';
+const VERSION = 'v7';
 const SHELL = `shell-${VERSION}`;
 const DATA = 'data-v1';
 
@@ -9,9 +10,11 @@ const SHELL_FILES = [
   './',
   'index.html',
   'css/app.css',
+  'js/alerts.js',
   'js/app.js',
   'js/calc.js',
   'js/chart.js',
+  'js/config.js',
   'js/currencies.js',
   'js/rates.js',
   'js/send.js',
@@ -80,4 +83,31 @@ self.addEventListener('fetch', (event) => {
   if (/currency-api|frankfurter/.test(url.hostname + url.pathname)) {
     event.respondWith(networkFirst(req, DATA));
   }
+});
+
+// ---- Rate alerts -----------------------------------------------------------
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data?.json() ?? {}; } catch { /* show the default */ }
+  event.waitUntil(self.registration.showNotification(data.title ?? 'Rates', {
+    body: data.body ?? '',
+    tag: data.tag,
+    icon: 'icons/icon-192.png',
+    data: { pair: data.pair },
+  }));
+});
+
+// Tapping an alert opens its chart.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const pair = event.notification.data?.pair;
+  event.waitUntil((async () => {
+    const [win] = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (win) {
+      if (pair) win.postMessage({ type: 'open-chart', pair });
+      return win.focus();
+    }
+    return self.clients.openWindow(pair ? `./#pair=${pair}` : './');
+  })());
 });

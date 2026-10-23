@@ -52,6 +52,13 @@ export function flagSrc(code) {
   return `icons/flags/${region}.svg`;
 }
 
+/** Flag emoji for a currency, e.g. CAD -> 🇨🇦, EUR -> 🇪🇺. Empty for metals. */
+export function flagEmoji(code) {
+  if (isMetal(code)) return '';
+  const region = REGION_OVERRIDES[code] === 'european_union' ? 'EU' : (REGION_OVERRIDES[code] ?? code.slice(0, 2));
+  return [...region.toUpperCase()].map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65)).join('');
+}
+
 // Returns the HTML for the round badge shown next to a currency.
 export function badgeHTML(code) {
   if (isMetal(code)) {

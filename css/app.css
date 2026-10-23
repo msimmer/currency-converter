@@ -777,6 +777,48 @@ body.keypad-open .keypad { transform: translateY(0); }
 }
 .add-row:active { background: var(--card); }
 
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  margin-bottom: 10px;
+  background: var(--card);
+  border-radius: 22px;
+}
+.toggle-row .row-text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.toggle-row .code { font-weight: 600; }
+.toggle-row .name { font-size: 14px; line-height: 1.35; color: var(--ink-2); }
+
+/* iOS-style switch */
+.switch {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 51px;
+  height: 31px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--separator);
+  transition: background 0.2s;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s;
+}
+.switch:checked { background: var(--up); }
+.switch:checked::after { transform: translateX(20px); }
+.switch:disabled { opacity: 0.5; }
+
 .button-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .pill-btn.secondary { background: var(--card); color: var(--accent); }
 .pill-btn.danger { background: var(--card); color: var(--danger); }

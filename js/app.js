@@ -14,6 +14,7 @@ import {
 } from './ui.js';
 import { buildURL, openURL, problem, TYPES } from './send.js';
 import { destinationLabel, getDestinations, initSettings } from './settings.js';
+import { initAlerts, syncAlerts } from './alerts.js';
 import { playClick, unlockAudio } from './sound.js';
 
 // ---- State -----------------------------------------------------------------
@@ -123,6 +124,7 @@ function renderList() {
   // Add lives with editing: the + appears opposite the ✓ while the list is in edit mode.
   $('#add-btn').classList.toggle('placeholder', !editing);
   refreshRows();
+  syncAlerts();
 }
 
 // Update every row's amount and rate line in place.
@@ -750,14 +752,35 @@ document.querySelector('.tabbar').addEventListener('click', (e) => {
   if (btn) switchTab(btn.dataset.tab);
 });
 
+// ---- Rate alert taps -------------------------------------------------------
+
+// A tapped alert opens its chart: via #pair=CAD-USD on a fresh launch, or a
+// message from the service worker when the app is already running.
+function openPair(pair) {
+  const m = /^([A-Z]{3})-([A-Z]{3})$/.exec(pair ?? '');
+  if (m) openChart(m[1], m[2]);
+}
+
+function openPairFromHash() {
+  const pair = location.hash.match(/^#pair=(.*)$/)?.[1];
+  if (!pair) return;
+  history.replaceState(null, '', location.pathname + location.search);
+  openPair(pair);
+}
+
 // ---- Boot ------------------------------------------------------------------
 
 initSettings({ sampleValues: () => sendValues(state.list[1] ?? (state.list[0] === 'EUR' ? 'USD' : 'EUR')) });
+initAlerts({ list: () => state.list });
 renderList();
 renderStatus();
 switchTab(state.tab);
+openPairFromHash();
 refreshRates();
 
 if ('serviceWorker' in navigator && window.isSecureContext) {
   navigator.serviceWorker.register('sw.js');
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data?.type === 'open-chart') openPair(e.data.pair);
+  });
 }

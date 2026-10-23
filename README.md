@@ -24,6 +24,9 @@ iPhone from Safari and it runs full-screen like a native app, and keeps working 
 - **Edit** (pencil): add currencies with +, remove them, or drag the ☰ handles to reorder them.
 - **Charts**: any pair, ranges from 1W to 10Y, drag across the chart to read values, and
   open/close/high/low/average/spread.
+- **Rate alerts** (Settings): a notification when a currency in your list hits a 2-week high
+  or low against your "You convert" currency. Tapping it opens the chart. Needs the small
+  Cloudflare Worker in `worker/` (setup in [worker/README.md](worker/README.md)).
 - Reopens on the screen you last used. Light and dark mode, safe-area aware, offline cache.
 
 ## Data sources (free, no API key)
@@ -58,14 +61,17 @@ js/app.js             UI: converter, keypad, menus, picker sheet, charts view, t
 js/calc.js            keypad calculator (+ − × ÷)
 js/send.js            Send money destinations: templates, URLs, backup codes
 js/settings.js        Settings tab and destination editor
+js/alerts.js          rate alerts: push subscription and the Settings switch
+js/config.js          URL of the rate alerts Worker
 js/sound.js           keypad click sound
 js/ui.js              shared modal / action sheet / toast helpers
 js/rates.js           rate fetching, conversion, history
 js/currencies.js      currency list, names, flags, number formatting
 icons/flags/          circular flags from HatScripts/circle-flags (MIT)
 js/chart.js           SVG line chart with touch scrubbing
-sw.js                 offline cache
+sw.js                 offline cache, shows alert notifications
 manifest.webmanifest  install metadata
+worker/               Cloudflare Worker that checks rates and sends the alerts
 ```
 
 When you deploy changes, bump `VERSION` in `sw.js`.

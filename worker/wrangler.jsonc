@@ -1,0 +1,32 @@
+// Cloudflare Worker config. Setup steps are in README.md next to this file.
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "rates-alerts",
+	"main": "src/index.js",
+	"compatibility_date": "2026-09-01",
+	// Hourly: rates update once a day, and each pair alerts at most once per day
+	// of rates, so this only decides how soon after 8 am a waiting alert arrives.
+	"triggers": {
+		"crons": [
+			"0 * * * *"
+		]
+	},
+	"kv_namespaces": [
+		// Paste the id printed by `npx wrangler kv namespace create ALERTS`.
+		{
+			"binding": "ALERTS",
+			"id": "9a7a2f2ceb0347818193433b29abd6b3"
+		}
+	],
+	"vars": {
+		// Where the app is hosted (scheme + host only); the API only answers this origin.
+		"ALLOWED_ORIGIN": "https://msimmer.github.io",
+		// Contact for push services, sent with every push: a URL or mailto: address.
+		"VAPID_SUBJECT": "https://msimmer.github.io/currency-converter/",
+		// From `npm run vapid-keys`. The private key goes in a secret, not here.
+		"VAPID_PUBLIC_KEY": "BBjCFr0UDDj9xOL4gCUKJDe8wsORZ9PLhQxAzeZQkd9_0iLkAC1Q_-DX2BGvDYsO6U0iXV376SLjnAFrTj7eM2k"
+	},
+	"observability": {
+		"enabled": true
+	}
+}

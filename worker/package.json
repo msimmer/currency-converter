@@ -1,0 +1,16 @@
+{
+  "name": "rates-alerts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --test-scheduled",
+    "deploy": "wrangler deploy",
+    "logs": "wrangler tail",
+    "vapid-keys": "node scripts/vapid-keys.mjs",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "http_ece": "^1.2.1",
+    "wrangler": "^4.152.0"
+  }
+}

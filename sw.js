@@ -2,7 +2,7 @@
 // dated history snapshots cache-first (they never change).
 // Also shows rate alert pushes (see js/alerts.js and worker/).
 
-const VERSION = 'v7';
+const VERSION = 'v8';
 const SHELL = `shell-${VERSION}`;
 const DATA = 'data-v1';
 
@@ -40,10 +40,10 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-async function networkFirst(req, cacheName) {
+async function networkFirst(req, cacheName, init) {
   const cache = await caches.open(cacheName);
   try {
-    const res = await fetch(req);
+    const res = await fetch(req, init);
     if (res.ok) cache.put(req, res.clone());
     return res;
   } catch (err) {
@@ -69,7 +69,9 @@ self.addEventListener('fetch', (event) => {
 
   if (url.origin === self.location.origin) {
     // Network-first so updates show up on next launch; cache when offline.
-    event.respondWith(networkFirst(req, SHELL));
+    // 'no-cache' revalidates past the browser's HTTP cache (GitHub Pages allows
+    // 10 minutes), so a launch never mixes a new page with old scripts.
+    event.respondWith(networkFirst(req, SHELL, { cache: 'no-cache' }));
     return;
   }
 

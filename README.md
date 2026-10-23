@@ -4,6 +4,8 @@ A multi-currency converter and charting app in the style of the classic XE app.
 It's a Progressive Web App (PWA): plain HTML/CSS/JS with no build step. Install it on an
 iPhone from Safari and it runs full-screen like a native app, and keeps working offline.
 
+**Demo:** [msimmer.github.io/currency-converter](https://msimmer.github.io/currency-converter/)
+
 ## Features
 
 - **Converter**: the top "You convert" card plus any number of currencies, including gold,

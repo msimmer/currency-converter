@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -60,7 +61,21 @@ function serviceWorker(): Plugin {
   };
 }
 
+// Shown in Settings → About: the build date and commit, e.g. "2026.10.31 (a3234b9)".
+// A "+" after the commit means the build had uncommitted changes.
+function appVersion(): string {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '.');
+  try {
+    const commit = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+    const dirty = execSync('git status --porcelain', { encoding: 'utf8' }).trim() ? '+' : '';
+    return `${date} (${commit}${dirty})`;
+  } catch {
+    return date;
+  }
+}
+
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(appVersion()) },
   // Relative, so the same build works on GitHub Pages (/currency-converter/) and locally.
   base: './',
   plugins: [react(), serviceWorker()],

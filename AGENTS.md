@@ -23,7 +23,8 @@ An npm workspace with two packages:
 | `npm run deploy` | Worker (`wrangler deploy`), then the app (`gh-pages` branch) |
 
 `npm run deploy:app` / `deploy:worker` deploy one side. Run `npm test` and `npm run typecheck`
-after changes.
+after changes. Pushing `main` doesn't deploy anything. Deploy the app from a clean, committed
+tree: Settings → About shows the build date and commit (`+` marks uncommitted changes).
 
 ## App layout (`app/`)
 

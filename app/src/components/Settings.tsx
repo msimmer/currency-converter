@@ -104,6 +104,7 @@ export function Settings({ hidden, destinations, onDestinations, sampleValues, l
 
         <h2 className="section-title">About</h2>
         <p className="section-note">Rates from <a href="https://github.com/fawazahmed0/exchange-api" target="_blank" rel="noopener">exchange-api</a> and <a href="https://frankfurter.dev" target="_blank" rel="noopener">Frankfurter</a> (ECB), updated daily. Flags from <a href="https://github.com/HatScripts/circle-flags" target="_blank" rel="noopener">circle-flags</a>.</p>
+        <p className="section-note" id="app-version">Version {__APP_VERSION__}{import.meta.env.DEV && ' · development'}</p>
       </main>
 
       {/* Outside the view, which is display: none on other tabs. */}

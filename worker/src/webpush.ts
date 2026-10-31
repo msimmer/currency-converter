@@ -1,20 +1,31 @@
 // Web Push with nothing but WebCrypto: VAPID signing (RFC 8292) and
-// aes128gcm payload encryption (RFC 8291). Works in Workers and Node 20+.
+// aes128gcm payload encryption (RFC 8291). Works in Workers and Node 22+.
+
+export interface Subscription {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}
+
+export interface Vapid {
+  publicKey: string; // base64url, uncompressed P-256 point
+  privateKey: string; // base64url `d` of the JWK
+  subject: string; // a URL or mailto: address
+}
 
 const enc = new TextEncoder();
 
-export function b64u(bytes) {
+export function b64u(bytes: ArrayBuffer | Uint8Array): string {
   let s = '';
   for (const b of new Uint8Array(bytes)) s += String.fromCharCode(b);
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export function fromB64u(str) {
+export function fromB64u(str: string): Uint8Array<ArrayBuffer> {
   const s = atob(str.replace(/-/g, '+').replace(/_/g, '/'));
   return Uint8Array.from(s, (c) => c.charCodeAt(0));
 }
 
-function concat(...parts) {
+function concat(...parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let i = 0;
   for (const p of parts) {
@@ -24,14 +35,14 @@ function concat(...parts) {
   return out;
 }
 
-async function hkdf(salt, ikm, info, bytes) {
+async function hkdf(salt: BufferSource, ikm: BufferSource, info: BufferSource, bytes: number): Promise<Uint8Array<ArrayBuffer>> {
   const key = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt, info }, key, bytes * 8);
   return new Uint8Array(bits);
 }
 
 /** The Authorization header for a push to `endpoint`, signed with the VAPID key pair. */
-export async function vapidAuth(endpoint, { publicKey, privateKey, subject }) {
+export async function vapidAuth(endpoint: string, { publicKey, privateKey, subject }: Vapid): Promise<string> {
   const pub = fromB64u(publicKey);
   const key = await crypto.subtle.importKey('jwk', {
     kty: 'EC', crv: 'P-256', x: b64u(pub.slice(1, 33)), y: b64u(pub.slice(33, 65)), d: privateKey,
@@ -48,13 +59,15 @@ export async function vapidAuth(endpoint, { publicKey, privateKey, subject }) {
 }
 
 /** Encrypt `payload` for a subscription's keys as a single aes128gcm record. */
-export async function encrypt(payload, { p256dh, auth }) {
+export async function encrypt(payload: string, { p256dh, auth }: Subscription['keys']): Promise<Uint8Array<ArrayBuffer>> {
   const uaPublic = fromB64u(p256dh);
   const authSecret = fromB64u(auth);
   const uaKey = await crypto.subtle.importKey('raw', uaPublic, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
-  const local = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
-  const asPublic = new Uint8Array(await crypto.subtle.exportKey('raw', local.publicKey));
-  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: uaKey }, local.privateKey, 256));
+  const local = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']) as CryptoKeyPair;
+  const asPublic = new Uint8Array(await crypto.subtle.exportKey('raw', local.publicKey) as ArrayBuffer);
+  // Workers' types spell ECDH's `public` as `$public`; the runtime takes `public`.
+  const ecdh = { name: 'ECDH', public: uaKey } as SubtleCryptoDeriveKeyAlgorithm;
+  const shared = new Uint8Array(await crypto.subtle.deriveBits(ecdh, local.privateKey, 256));
 
   const ikm = await hkdf(authSecret, shared, concat(enc.encode('WebPush: info\0'), uaPublic, asPublic), 32);
   const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -71,7 +84,12 @@ export async function encrypt(payload, { p256dh, auth }) {
 }
 
 /** Send one push. Resolves to the push service's Response. */
-export async function sendPush(subscription, payload, vapid, { ttl = 86400, urgency = 'normal' } = {}) {
+export async function sendPush(
+  subscription: Subscription,
+  payload: unknown,
+  vapid: Vapid,
+  { ttl = 86400, urgency = 'normal' } = {},
+): Promise<Response> {
   return fetch(subscription.endpoint, {
     method: 'POST',
     headers: {

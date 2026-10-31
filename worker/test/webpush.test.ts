@@ -1,8 +1,8 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { createECDH, randomBytes } from 'node:crypto';
 import ece from 'http_ece';
-import { b64u, encrypt, fromB64u, vapidAuth } from '../src/webpush.js';
+import { b64u, encrypt, fromB64u, vapidAuth } from '../src/webpush';
 
 test('payload decrypts with http_ece (the library behind web-push)', async () => {
   // The browser's side of a subscription.
@@ -17,14 +17,14 @@ test('payload decrypts with http_ece (the library behind web-push)', async () =>
 });
 
 test('VAPID token is a valid ES256 JWT for the push origin', async () => {
-  const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
-  const publicKey = b64u(await crypto.subtle.exportKey('raw', pair.publicKey));
-  const { d } = await crypto.subtle.exportKey('jwk', pair.privateKey);
+  const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']) as CryptoKeyPair;
+  const publicKey = b64u(await crypto.subtle.exportKey('raw', pair.publicKey) as ArrayBuffer);
+  const { d } = await crypto.subtle.exportKey('jwk', pair.privateKey) as JsonWebKey;
 
   const header = await vapidAuth('https://web.push.apple.com/QGuQyavXutnMH/abc', {
-    publicKey, privateKey: d, subject: 'https://example.com/',
+    publicKey, privateKey: d!, subject: 'https://example.com/',
   });
-  const [, jwt, k] = header.match(/^vapid t=([^,]+), k=(.+)$/);
+  const [, jwt, k] = header.match(/^vapid t=([^,]+), k=(.+)$/)!;
   assert.equal(k, publicKey);
 
   const [h, c, s] = jwt.split('.');

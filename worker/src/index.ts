@@ -6,11 +6,36 @@
 // at most one per pair per day of rates, and only between 8 am and 9 pm in
 // the phone's time zone.
 //
-// Storage (KV, binding ALERTS): "sub:<sha256 of endpoint>" -> {
-//   subscription, base, codes, names, timeZone, sent: { 'CAD/USD': '2026-10-23' } }
+// Storage (KV, binding ALERTS): "sub:<sha256 of endpoint>" -> a SubscriptionRecord.
 
-import { alertPayload, findExtremes, loadHistory } from './alerts.js';
-import { sendPush } from './webpush.js';
+import { alertPayload, findExtremes, loadHistory, type Names } from './alerts';
+import { sendPush, type Subscription, type Vapid } from './webpush';
+
+export interface Env {
+  ALERTS: KVNamespace;
+  ALLOWED_ORIGIN: string;
+  VAPID_SUBJECT: string;
+  VAPID_PUBLIC_KEY: string;
+  VAPID_PRIVATE_KEY: string; // a secret: `wrangler secret put VAPID_PRIVATE_KEY`
+}
+
+interface SubscriptionRecord {
+  subscription: Subscription;
+  base: string;
+  codes: string[];
+  names: Names;
+  timeZone: string;
+  sent: Record<string, string>; // pair -> date of the rates it last alerted on, e.g. { 'CAD/USD': '2026-10-23' }
+}
+
+// PUT /subscription, as sent by the app. Checked by validate().
+interface RegistrationBody {
+  subscription?: { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } };
+  base?: unknown;
+  codes?: unknown;
+  names?: Record<string, { name?: unknown; flag?: unknown } | undefined>;
+  timeZone?: unknown;
+}
 
 const QUIET_UNTIL = 8;
 const QUIET_FROM = 21;
@@ -20,7 +45,7 @@ const MAX_CODES = 30;
 const PUSH_HOSTS = /(^|\.)push\.apple\.com$|^fcm\.googleapis\.com$|(^|\.)push\.services\.mozilla\.com$|\.notify\.windows\.com$/;
 
 export default {
-  async fetch(request, env) {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const cors = {
       'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN,
       'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS',
@@ -35,54 +60,57 @@ export default {
     } catch (err) {
       const status = err instanceof HttpError ? err.status : 500;
       if (status === 500) console.error(err);
-      return json({ error: err.message }, status, cors);
+      return json({ error: err instanceof Error ? err.message : String(err) }, status, cors);
     }
   },
 
-  async scheduled(event, env, ctx) {
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(runAlerts(env));
   },
-};
+} satisfies ExportedHandler<Env>;
 
 class HttpError extends Error {
-  constructor(status, message) {
+  status: number;
+
+  constructor(status: number, message: string) {
     super(message);
     this.status = status;
   }
 }
 
-function json(body, status = 200, headers = {}) {
+function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } });
 }
 
-async function route(request, env) {
+async function route(request: Request, env: Env): Promise<Response> {
   const { pathname } = new URL(request.url);
   const key = `${request.method} ${pathname}`;
 
   if (key === 'GET /config') return json({ publicKey: env.VAPID_PUBLIC_KEY });
 
   if (key === 'PUT /subscription') {
-    const body = await readBody(request);
-    const record = validate(body);
-    const id = await subKey(record.subscription.endpoint);
-    const old = await env.ALERTS.get(id, 'json');
+    const body = await readBody<RegistrationBody>(request);
+    const valid = validate(body);
+    const id = await subKey(valid.subscription.endpoint);
+    const old = await env.ALERTS.get<SubscriptionRecord>(id, 'json');
     // Keep "already sent today" marks for pairs still in the list.
-    const pairs = new Set(record.codes.map((c) => `${record.base}/${c}`));
-    record.sent = Object.fromEntries(Object.entries(old?.sent ?? {}).filter(([pair]) => pairs.has(pair)));
+    const pairs = new Set(valid.codes.map((c) => `${valid.base}/${c}`));
+    const sent = Object.fromEntries(Object.entries(old?.sent ?? {}).filter(([pair]) => pairs.has(pair)));
+    const record: SubscriptionRecord = { ...valid, sent };
     await env.ALERTS.put(id, JSON.stringify(record));
     return json({ ok: true });
   }
 
   if (key === 'DELETE /subscription') {
-    const { endpoint } = await readBody(request);
+    const { endpoint } = await readBody<{ endpoint?: unknown }>(request);
     if (typeof endpoint !== 'string') throw new HttpError(400, 'endpoint required');
     await env.ALERTS.delete(await subKey(endpoint));
     return json({ ok: true });
   }
 
   if (key === 'POST /test') {
-    const { endpoint } = await readBody(request);
-    const record = typeof endpoint === 'string' && await env.ALERTS.get(await subKey(endpoint), 'json');
+    const { endpoint } = await readBody<{ endpoint?: unknown }>(request);
+    const record = typeof endpoint === 'string' ? await env.ALERTS.get<SubscriptionRecord>(await subKey(endpoint), 'json') : null;
     if (!record) throw new HttpError(404, 'Not registered for alerts');
     const pairs = record.codes.filter((c) => c !== record.base).map((c) => `${record.base}/${c}`);
     const res = await sendPush(record.subscription, {
@@ -97,66 +125,66 @@ async function route(request, env) {
   throw new HttpError(404, 'Not found');
 }
 
-async function readBody(request) {
+async function readBody<T>(request: Request): Promise<T> {
   try {
-    return await request.json();
+    return await request.json<T>();
   } catch {
     throw new HttpError(400, 'Expected JSON');
   }
 }
 
-function validate(body) {
-  const sub = body?.subscription;
+function validate(body: RegistrationBody): Omit<SubscriptionRecord, 'sent'> {
+  const endpoint = body?.subscription?.endpoint;
   let host;
-  try { host = new URL(sub.endpoint).hostname; } catch { /* checked below */ }
-  if (!host || !sub.endpoint.startsWith('https://') || !PUSH_HOSTS.test(host)) throw new HttpError(400, 'Unsupported push endpoint');
-  if (typeof sub.keys?.p256dh !== 'string' || typeof sub.keys?.auth !== 'string') throw new HttpError(400, 'Missing subscription keys');
+  try { host = new URL(String(endpoint)).hostname; } catch { /* checked below */ }
+  if (typeof endpoint !== 'string' || !host || !endpoint.startsWith('https://') || !PUSH_HOSTS.test(host)) {
+    throw new HttpError(400, 'Unsupported push endpoint');
+  }
+  const { p256dh, auth } = body.subscription?.keys ?? {};
+  if (typeof p256dh !== 'string' || typeof auth !== 'string') throw new HttpError(400, 'Missing subscription keys');
 
-  const isCode = (c) => typeof c === 'string' && /^[A-Z]{3}$/.test(c);
+  const isCode = (c: unknown): c is string => typeof c === 'string' && /^[A-Z]{3}$/.test(c);
   const codes = Array.isArray(body.codes) ? body.codes.filter(isCode).slice(0, MAX_CODES) : [];
-  if (!isCode(body.base)) throw new HttpError(400, 'base must be a currency code');
+  const { base } = body;
+  if (!isCode(base)) throw new HttpError(400, 'base must be a currency code');
 
-  const names = {};
-  for (const c of [body.base, ...codes]) {
+  const names: Names = {};
+  for (const c of [base, ...codes]) {
     const n = body.names?.[c];
     names[c] = { name: String(n?.name ?? c).slice(0, 60), flag: String(n?.flag ?? '').slice(0, 8) };
   }
 
   let timeZone = 'UTC';
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone: body.timeZone });
-    if (typeof body.timeZone === 'string') timeZone = body.timeZone;
-  } catch { /* keep UTC */ }
+  if (typeof body.timeZone === 'string') {
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: body.timeZone });
+      timeZone = body.timeZone;
+    } catch { /* keep UTC */ }
+  }
 
-  return {
-    subscription: { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } },
-    base: body.base,
-    codes,
-    names,
-    timeZone,
-  };
+  return { subscription: { endpoint, keys: { p256dh, auth } }, base, codes, names, timeZone };
 }
 
-async function subKey(endpoint) {
+async function subKey(endpoint: string): Promise<string> {
   const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(endpoint));
   return 'sub:' + [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-function vapid(env) {
+function vapid(env: Env): Vapid {
   return { publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY, subject: env.VAPID_SUBJECT };
 }
 
-function listText(items) {
+function listText(items: string[]): string {
   return items.length < 3 ? items.join(' and ') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
 }
 
-function localHour(timeZone, now = new Date()) {
+function localHour(timeZone: string, now = new Date()): number {
   return Number(new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hourCycle: 'h23' }).format(now));
 }
 
-async function allKeys(kv) {
-  const keys = [];
-  let cursor;
+async function allKeys(kv: KVNamespace): Promise<string[]> {
+  const keys: string[] = [];
+  let cursor: string | undefined;
   do {
     const page = await kv.list({ prefix: 'sub:', cursor });
     keys.push(...page.keys.map((k) => k.name));
@@ -165,14 +193,14 @@ async function allKeys(kv) {
   return keys;
 }
 
-export async function runAlerts(env, now = new Date()) {
+export async function runAlerts(env: Env, now = new Date()): Promise<void> {
   const keys = await allKeys(env.ALERTS);
   if (!keys.length) return;
   const history = await loadHistory();
-  const date = history.at(-1).date;
+  const date = history[history.length - 1].date;
 
   for (const id of keys) {
-    const record = await env.ALERTS.get(id, 'json');
+    const record = await env.ALERTS.get<SubscriptionRecord>(id, 'json');
     if (!record) continue;
     const hour = localHour(record.timeZone, now);
     if (hour < QUIET_UNTIL || hour >= QUIET_FROM) continue;

@@ -1,9 +1,9 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { alertPayload, findExtremes } from '../src/alerts.js';
+import { alertPayload, findExtremes, type Snapshot } from '../src/alerts';
 
 // USD-based history where USD per CAD (1 / CAD) follows `cadUsd`, EUR is flat.
-export function history(cadUsd, { eur = 0.92 } = {}) {
+export function history(cadUsd: number[], { eur = 0.92 } = {}): Snapshot[] {
   return cadUsd.map((v, i) => ({
     date: `2026-10-${String(i + 1).padStart(2, '0')}`,
     rates: { USD: 1, CAD: 1 / v, EUR: eur, XAU: 0.00025 },

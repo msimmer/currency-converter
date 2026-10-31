@@ -1,8 +1,8 @@
 // Cloudflare Worker config. Setup steps are in README.md next to this file.
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
+	"$schema": "../node_modules/wrangler/config-schema.json",
 	"name": "rates-alerts",
-	"main": "src/index.js",
+	"main": "src/index.ts",
 	"compatibility_date": "2026-09-01",
 	// Hourly: rates update once a day, and each pair alerts at most once per day
 	// of rates, so this only decides how soon after 8 am a waiting alert arrives.

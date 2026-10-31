@@ -1,0 +1,21 @@
+{
+  "name": "currency-converter",
+  "private": true,
+  "workspaces": [
+    "app",
+    "worker"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w app",
+    "dev:worker": "npm run dev -w worker",
+    "build": "npm run build --workspaces",
+    "preview": "npm run preview -w app",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm test --workspaces",
+    "deploy": "npm run deploy:worker && npm run deploy:app",
+    "deploy:app": "npm run deploy -w app",
+    "deploy:worker": "npm run deploy -w worker",
+    "logs": "npm run logs -w worker",
+    "vapid-keys": "npm run vapid-keys -w worker"
+  }
+}

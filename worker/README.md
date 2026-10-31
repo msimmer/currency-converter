@@ -66,14 +66,14 @@ it fails with "Required Worker name missing". The `npm run` commands work from a
    ```sh
    npx wrangler kv namespace create ALERTS
    ```
-   It prints an `id`. Put it in `wrangler.jsonc` in place of `PASTE_KV_NAMESPACE_ID`.
+   It prints an `id`. Put it in `wrangler.jsonc` as the `id` of the `ALERTS` namespace.
    (If wrangler offers to add it to the config for you, say yes, then check that the binding is named `ALERTS`.)
 
 4. **Make the push keys** (VAPID keys identify your server to Apple)
    ```sh
    npm run vapid-keys
    ```
-   Put the **public** key in `wrangler.jsonc` in place of `PASTE_VAPID_PUBLIC_KEY`.
+   Put the **public** key in `wrangler.jsonc` as `VAPID_PUBLIC_KEY`.
    Keep the terminal open for the private key.
 
 5. **Deploy**
@@ -95,7 +95,8 @@ it fails with "Required Worker name missing". The `npm run` commands work from a
    ```js
    export const ALERTS_API = 'https://rates-alerts.your-name.workers.dev';
    ```
-   then run `npm run deploy:app` from the repo root.
+   then commit and push to `main` (the **Deploy app** GitHub Action publishes it), or run
+   `npm run deploy:app` from the repo root.
 
 9. **Turn it on on the iPhone**: open Rates **from the Home Screen icon** (not a Safari tab),
    wait a moment for the update, then go to **Settings → Rate alerts**, switch on

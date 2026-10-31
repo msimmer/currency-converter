@@ -35,7 +35,7 @@ iPhone from Safari and it runs full-screen like a native app, and keeps working 
 
 | What | Source | Notes |
 |---|---|---|
-| Latest rates, metals | [fawazahmed0/exchange-api](https://github.com/fawazahmed0/exchange-api) | Updated daily |
+| Latest rates, metals | [fawazahmed0/exchange-api](https://github.com/fawazahmed0/exchange-api) | Updated daily; two mirrors, the newer wins |
 | History, ECB currencies | [Frankfurter](https://frankfurter.dev) | ~30 major currencies, back to 1999 |
 | History, everything else | fawazahmed0 dated snapshots | Back to March 2024, sampled |
 
@@ -72,6 +72,12 @@ The build uses relative URLs, so any static host works, but the service worker n
 
 1. Open the URL in **Safari**.
 2. Tap Share → **Add to Home Screen**.
+
+There's no need to reinstall after a deploy: the app picks up the new version the next time
+it's opened (if it still looks old, close it from the app switcher and open it again).
+**Settings → About** shows the build date and commit, e.g. `Version 2026.10.31 (66ef0aa)`;
+a `+` after the commit means it was built with uncommitted changes. Reinstalling resets the
+app's permissions, so rate alerts have to be switched on again.
 
 ## Layout
 

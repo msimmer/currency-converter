@@ -61,8 +61,11 @@ The service worker (offline cache, alert notifications) only exists in productio
 
 ## Hosting
 
-`npm run deploy:app` builds the app and pushes `app/dist` to the `gh-pages` branch. In the
-repo's **Settings → Pages**, the source must be **Deploy from a branch → `gh-pages` / (root)**.
+Pushing app changes to `main` deploys them: the **Deploy app** GitHub Action typechecks,
+tests, builds and publishes `app/dist` to the `gh-pages` branch. `npm run deploy:app` does the
+same from your machine. In the repo's **Settings → Pages**, the source must be
+**Deploy from a branch → `gh-pages` / (root)**. The Worker deploys separately
+(`npm run deploy:worker`).
 The build uses relative URLs, so any static host works, but the service worker needs HTTPS.
 
 ## Install on iPhone

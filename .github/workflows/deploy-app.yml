@@ -1,0 +1,51 @@
+# Builds the app and publishes it to the gh-pages branch, which GitHub Pages
+# serves, whenever app code reaches main. Same result as `npm run deploy:app`.
+# The Worker isn't deployed from here; that's `npm run deploy:worker`.
+
+name: Deploy app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - app/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/deploy-app.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write # push to gh-pages
+
+# One deploy at a time; a newer push replaces a queued one.
+concurrency:
+  group: deploy-app
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      # gh-pages pushes from its own clone, which doesn't get checkout's
+      # credentials, so it's given the token in the repo URL (--silent keeps that
+      # URL out of the log).
+      - name: Build and publish
+        run: >
+          npm run deploy -w app --
+          --repo "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          --user "github-actions <github-actions@users.noreply.github.com>"
+          --message "Deploy ${GITHUB_SHA::7}"
+          --silent
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

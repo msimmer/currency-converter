@@ -5,16 +5,21 @@
 // play on touch-down. The 'ambient' audio session follows the silent switch and
 // plays over music instead of pausing it, like the system keyboard.
 
-let ctx = null;
-let buffer = null;
+// Safari-only APIs that TypeScript's DOM types don't include.
+type SafariNavigator = Navigator & { audioSession?: { type: string } };
+type SafariWindow = Window & { webkitAudioContext?: typeof AudioContext };
 
-export function unlockAudio() {
+let ctx: AudioContext | null = null;
+let buffer: AudioBuffer | null = null;
+
+export function unlockAudio(): void {
   try {
     if (!ctx) {
-      if (navigator.audioSession) navigator.audioSession.type = 'ambient';
-      const AudioContext = window.AudioContext ?? window.webkitAudioContext;
-      if (!AudioContext) return;
-      ctx = new AudioContext();
+      const { audioSession } = navigator as SafariNavigator;
+      if (audioSession) audioSession.type = 'ambient';
+      const AudioContextClass = window.AudioContext ?? (window as SafariWindow).webkitAudioContext;
+      if (!AudioContextClass) return;
+      ctx = new AudioContextClass();
       buffer = makeClick(ctx);
     }
     // iOS suspends ('interrupted') the context when the app goes to the background.
@@ -24,8 +29,8 @@ export function unlockAudio() {
   }
 }
 
-export function playClick() {
-  if (ctx?.state !== 'running') return;
+export function playClick(): void {
+  if (ctx?.state !== 'running' || !buffer) return;
   const source = ctx.createBufferSource();
   source.buffer = buffer;
   source.connect(ctx.destination);
@@ -34,7 +39,7 @@ export function playClick() {
 
 // A soft, low "tock" like the iOS keyboard: a damped ~950 Hz knock with a
 // muffled noise transient, eased in so the onset isn't sharp.
-function makeClick(context) {
+function makeClick(context: AudioContext): AudioBuffer {
   const rate = context.sampleRate;
   const buf = context.createBuffer(1, Math.round(rate * 0.03), rate);
   const data = buf.getChannelData(0);

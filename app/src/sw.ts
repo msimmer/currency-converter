@@ -1,35 +1,19 @@
 // Offline support: app shell cached, latest rates network-first,
 // dated history snapshots cache-first (they never change).
-// Also shows rate alert pushes (see js/alerts.js and worker/).
+// Also shows rate alert pushes (see lib/alerts.ts and worker/).
+//
+// Built on its own as sw.js (see vite.config.ts), which fills in the shell's
+// files and a version that changes whenever any of them do.
 
-const VERSION = 'v8';
-const SHELL = `shell-${VERSION}`;
+declare const self: ServiceWorkerGlobalScope;
+declare const __SHELL_FILES__: string[];
+declare const __SHELL_VERSION__: string;
+
+const SHELL = `shell-${__SHELL_VERSION__}`;
 const DATA = 'data-v1';
 
-const SHELL_FILES = [
-  './',
-  'index.html',
-  'css/app.css',
-  'js/alerts.js',
-  'js/app.js',
-  'js/calc.js',
-  'js/chart.js',
-  'js/config.js',
-  'js/currencies.js',
-  'js/rates.js',
-  'js/send.js',
-  'js/settings.js',
-  'js/sound.js',
-  'js/ui.js',
-  'manifest.webmanifest',
-  'icons/icon.svg',
-  'icons/apple-touch-icon.png',
-  'icons/icon-192.png',
-  'icons/icon-512.png',
-];
-
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(SHELL).then((c) => c.addAll(SHELL_FILES)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(SHELL).then((c) => c.addAll(__SHELL_FILES__)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
@@ -40,7 +24,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-async function networkFirst(req, cacheName, init) {
+async function networkFirst(req: Request, cacheName: string, init?: RequestInit): Promise<Response> {
   const cache = await caches.open(cacheName);
   try {
     const res = await fetch(req, init);
@@ -53,7 +37,7 @@ async function networkFirst(req, cacheName, init) {
   }
 }
 
-async function cacheFirst(req, cacheName) {
+async function cacheFirst(req: Request, cacheName: string): Promise<Response> {
   const cache = await caches.open(cacheName);
   const hit = await cache.match(req);
   if (hit) return hit;
@@ -90,7 +74,7 @@ self.addEventListener('fetch', (event) => {
 // ---- Rate alerts -----------------------------------------------------------
 
 self.addEventListener('push', (event) => {
-  let data = {};
+  let data: { title?: string; body?: string; tag?: string; pair?: string } = {};
   try { data = event.data?.json() ?? {}; } catch { /* show the default */ }
   event.waitUntil(self.registration.showNotification(data.title ?? 'Rates', {
     body: data.body ?? '',
@@ -103,7 +87,7 @@ self.addEventListener('push', (event) => {
 // Tapping an alert opens its chart.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const pair = event.notification.data?.pair;
+  const pair: string | undefined = event.notification.data?.pair;
   event.waitUntil((async () => {
     const [win] = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     if (win) {
@@ -113,3 +97,5 @@ self.addEventListener('notificationclick', (event) => {
     return self.clients.openWindow(pair ? `./#pair=${pair}` : './');
   })());
 });
+
+export {};

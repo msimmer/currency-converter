@@ -1,6 +1,8 @@
 // Currency metadata: which codes we offer, their names, flags and number formatting.
 
-export const METALS = {
+export type Metal = 'XAU' | 'XAG' | 'XPT' | 'XPD';
+
+export const METALS: Record<Metal, { name: string; symbol: string; unit: string }> = {
   XAU: { name: 'Gold', symbol: 'Au', unit: 'troy oz' },
   XAG: { name: 'Silver', symbol: 'Ag', unit: 'troy oz' },
   XPT: { name: 'Platinum', symbol: 'Pt', unit: 'troy oz' },
@@ -19,56 +21,48 @@ TMT TND TOP TRY TTD TWD TZS UAH UGX USD UYU UZS VES VND VUV WST XAF XCD XCG XOF 
 ZMW ZWG`.split(/\s+/);
 
 // Most currency codes start with their country's ISO 3166 code; these don't.
-const REGION_OVERRIDES = {
+const REGION_OVERRIDES: Record<string, string> = {
   EUR: 'european_union', XAF: 'cm', XOF: 'sn', XCD: 'ag', XPF: 'pf', ANG: 'cw', XCG: 'cw',
 };
 
-const NAME_OVERRIDES = {
+const NAME_OVERRIDES: Record<string, string> = {
   XCG: 'Caribbean Guilder', ZWG: 'Zimbabwe Gold', SLE: 'Sierra Leonean Leone',
   GGP: 'Guernsey Pound', JEP: 'Jersey Pound', IMP: 'Manx Pound', VES: 'Venezuelan Bolívar',
 };
 
-let displayNames;
+let displayNames: Intl.DisplayNames | undefined;
 try { displayNames = new Intl.DisplayNames(['en'], { type: 'currency' }); } catch { /* old Safari */ }
 
-export function isMetal(code) {
+export function isMetal(code: string): code is Metal {
   return code in METALS;
 }
 
-export function currencyName(code) {
+export function currencyName(code: string): string {
   if (isMetal(code)) return METALS[code].name;
   if (NAME_OVERRIDES[code]) return NAME_OVERRIDES[code];
   const name = displayNames?.of(code);
   return name && name !== code ? name : code;
 }
 
-export function currencySubtitle(code) {
+export function currencySubtitle(code: string): string {
   return isMetal(code) ? `${METALS[code].name} · ${METALS[code].unit}` : currencyName(code);
 }
 
-// Circular flag artwork from HatScripts/circle-flags (MIT), vendored in icons/flags.
-export function flagSrc(code) {
+// Circular flag artwork from HatScripts/circle-flags (MIT), vendored in public/icons/flags.
+export function flagSrc(code: string): string {
   const region = REGION_OVERRIDES[code] ?? code.slice(0, 2).toLowerCase();
-  return `icons/flags/${region}.svg`;
+  return `${import.meta.env.BASE_URL}icons/flags/${region}.svg`;
 }
 
 /** Flag emoji for a currency, e.g. CAD -> 🇨🇦, EUR -> 🇪🇺. Empty for metals. */
-export function flagEmoji(code) {
+export function flagEmoji(code: string): string {
   if (isMetal(code)) return '';
   const region = REGION_OVERRIDES[code] === 'european_union' ? 'EU' : (REGION_OVERRIDES[code] ?? code.slice(0, 2));
   return [...region.toUpperCase()].map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65)).join('');
 }
 
-// Returns the HTML for the round badge shown next to a currency.
-export function badgeHTML(code) {
-  if (isMetal(code)) {
-    return `<span class="badge metal metal-${code.toLowerCase()}">${METALS[code].symbol}</span>`;
-  }
-  return `<img class="badge" src="${flagSrc(code)}" alt="" loading="lazy" decoding="async">`;
-}
-
 /** Codes to offer, given the set the rate source returned. Metals first. */
-export function availableCodes(rates) {
+export function availableCodes(rates: Record<string, number>): { metals: string[]; fiat: string[] } {
   const metals = Object.keys(METALS).filter((c) => c in rates);
   const fiat = FIAT.filter((c) => c in rates);
   return { metals, fiat };
@@ -77,25 +71,29 @@ export function availableCodes(rates) {
 // ---- Number formatting ------------------------------------------------------
 
 const locale = navigator.language || 'en-US';
-const fmtCache = new Map();
+const fmtCache = new Map<string, Intl.NumberFormat>();
 
-function fmt(key, opts) {
-  if (!fmtCache.has(key)) fmtCache.set(key, new Intl.NumberFormat(locale, opts));
-  return fmtCache.get(key);
+function fmt(key: string, opts: Intl.NumberFormatOptions): Intl.NumberFormat {
+  let f = fmtCache.get(key);
+  if (!f) {
+    f = new Intl.NumberFormat(locale, opts);
+    fmtCache.set(key, f);
+  }
+  return f;
 }
 
-function minorDigits(code) {
+function minorDigits(code: string): number {
   if (isMetal(code)) return 4;
   try {
     return new Intl.NumberFormat('en', { style: 'currency', currency: code })
-      .resolvedOptions().maximumFractionDigits;
+      .resolvedOptions().maximumFractionDigits ?? 2;
   } catch {
     return 2;
   }
 }
 
 /** Format an amount held in `code`, e.g. 1234.5 CAD -> "1,234.50". */
-export function formatAmount(value, code) {
+export function formatAmount(value: number, code: string): string {
   if (!Number.isFinite(value)) return '';
   if (value !== 0 && Math.abs(value) < 1) {
     return fmt('sig4', { maximumSignificantDigits: 4 }).format(value);
@@ -105,7 +103,7 @@ export function formatAmount(value, code) {
 }
 
 /** Format an exchange rate with enough precision to be useful. */
-export function formatRate(value) {
+export function formatRate(value: number): string {
   if (!Number.isFinite(value)) return '—';
   if (Math.abs(value) >= 100) return fmt('r2', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
   if (Math.abs(value) >= 1) return fmt('r4', { minimumFractionDigits: 4, maximumFractionDigits: 4 }).format(value);
@@ -113,22 +111,22 @@ export function formatRate(value) {
 }
 
 /** Format an axis tick so every label on the axis has the same number of decimals. */
-export function formatTick(value, step) {
+export function formatTick(value: number, step: number): string {
   let d = 0;
   while (d < 10 && Math.abs(Math.round(step * 10 ** d) - step * 10 ** d) > 1e-6) d++;
   return fmt(`tick${d}`, { minimumFractionDigits: d, maximumFractionDigits: d }).format(value);
 }
 
-export function formatPercent(value, { signed = true } = {}) {
+export function formatPercent(value: number, { signed = true }: { signed?: boolean } = {}): string {
   return fmt(`pct${signed}`, {
     style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: signed ? 'exceptZero' : 'auto',
   }).format(value);
 }
 
 /** Plain '.'-decimal, ungrouped number for the calculator, e.g. 1234.5 CAD -> "1234.5". */
-export function plainAmount(value, code) {
+export function plainAmount(value: number, code: string): string {
   if (!Number.isFinite(value)) return '';
-  const opts = value !== 0 && Math.abs(value) < 1
+  const opts: Intl.NumberFormatOptions = value !== 0 && Math.abs(value) < 1
     ? { maximumSignificantDigits: 4 }
     : { maximumFractionDigits: minorDigits(code) };
   return new Intl.NumberFormat('en-US', { ...opts, useGrouping: false }).format(value);

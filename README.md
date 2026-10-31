@@ -1,7 +1,7 @@
 # Rates
 
 A multi-currency converter and charting app in the style of the classic XE app.
-It's a Progressive Web App (PWA): plain HTML/CSS/JS with no build step. Install it on an
+It's a Progressive Web App (PWA) built with React, TypeScript and Vite. Install it on an
 iPhone from Safari and it runs full-screen like a native app, and keeps working offline.
 
 **Demo:** [msimmer.github.io/currency-converter](https://msimmer.github.io/currency-converter/)
@@ -41,15 +41,31 @@ iPhone from Safari and it runs full-screen like a native app, and keeps working 
 
 ## Run locally
 
+You need Node.js 22.18 or newer. From the repo root:
+
 ```sh
-python3 -m http.server 8642
-# open http://localhost:8642
+npm install
+npm run dev       # http://localhost:8642, with hot reload
 ```
 
-## Install on iPhone
+The service worker (offline cache, alert notifications) only exists in production builds;
+`npm run build && npm run preview` serves one at the same address.
 
-The service worker (offline support) needs HTTPS, so host it somewhere static and free,
-such as GitHub Pages, Netlify or Cloudflare Pages. Then:
+| Command (from the root) | What it does |
+|---|---|
+| `npm run dev` / `npm run dev:worker` | Run the app / the alerts Worker locally |
+| `npm test` | Run the tests for both |
+| `npm run typecheck` | Typecheck both |
+| `npm run build` | Build both (`app/dist`, `worker/dist`) |
+| `npm run deploy` | Deploy the Worker, then the app (or `deploy:worker` / `deploy:app`) |
+
+## Hosting
+
+`npm run deploy:app` builds the app and pushes `app/dist` to the `gh-pages` branch. In the
+repo's **Settings → Pages**, the source must be **Deploy from a branch → `gh-pages` / (root)**.
+The build uses relative URLs, so any static host works, but the service worker needs HTTPS.
+
+## Install on iPhone
 
 1. Open the URL in **Safari**.
 2. Tap Share → **Add to Home Screen**.
@@ -57,23 +73,17 @@ such as GitHub Pages, Netlify or Cloudflare Pages. Then:
 ## Layout
 
 ```
-index.html            app shell
-css/app.css           iOS-style styling, light/dark tokens
-js/app.js             UI: converter, keypad, menus, picker sheet, charts view, tabs
-js/calc.js            keypad calculator (+ − × ÷)
-js/send.js            Send money destinations: templates, URLs, backup codes
-js/settings.js        Settings tab and destination editor
-js/alerts.js          rate alerts: push subscription and the Settings switch
-js/config.js          URL of the rate alerts Worker
-js/sound.js           keypad click sound
-js/ui.js              shared modal / action sheet / toast helpers
-js/rates.js           rate fetching, conversion, history
-js/currencies.js      currency list, names, flags, number formatting
-icons/flags/          circular flags from HatScripts/circle-flags (MIT)
-js/chart.js           SVG line chart with touch scrubbing
-sw.js                 offline cache, shows alert notifications
-manifest.webmanifest  install metadata
+app/                  the PWA (Vite + React + TypeScript)
+  index.html          page shell; React renders into #root
+  src/App.tsx         state, tabs, rates refresh, keypad, row menus, Send money
+  src/components/     converter list, keypad, chart, picker sheet, settings, action sheet
+  src/lib/            plain TS: state changes, rates, formatting, calculator, send, alerts
+  src/sw.ts           offline cache, shows alert notifications (built as sw.js)
+  src/app.css         iOS-style styling, light/dark tokens
+  public/             manifest, icons, icons/flags/ (HatScripts/circle-flags, MIT)
+  test/               unit tests (Vitest)
 worker/               Cloudflare Worker that checks rates and sends the alerts
 ```
 
-When you deploy changes, bump `VERSION` in `sw.js`.
+Each deploy gets a new service worker automatically: the build gives the cache a version
+derived from the app's files.

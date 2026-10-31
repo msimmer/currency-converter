@@ -46,19 +46,19 @@ in `wrangler.jsonc`.
 
 ## Setup (one time, about 10 minutes)
 
-You need Node.js 20 or newer (`node --version`).
+You need Node.js 22.18 or newer (`node --version`).
 
-**Run every command below from the `worker` folder** (`cd ~/code/currency-converter/worker`).
+**Run the `npx wrangler` commands below from the `worker` folder** (`cd ~/code/currency-converter/worker`).
 Wrangler reads its settings from `wrangler.jsonc` in the current folder. Run from anywhere else,
-it fails with "Required Worker name missing" (and `npx` offers to download wrangler again).
+it fails with "Required Worker name missing". The `npm run` commands work from anywhere in the repo.
 
 1. **Create a Cloudflare account** at <https://dash.cloudflare.com/sign-up>. The free plan is enough.
    You don't need a domain.
 
 2. **Install and log in**
    ```sh
+   npm install               # at the repo root; installs both the app and the Worker
    cd worker
-   npm install
    npx wrangler login        # opens the browser to authorize wrangler
    ```
 
@@ -91,11 +91,11 @@ it fails with "Required Worker name missing" (and `npx` offers to download wrang
 
 7. **Check it**: `curl https://rates-alerts.your-name.workers.dev/config` should print your public key.
 
-8. **Point the app at it**: in `js/config.js`, set
+8. **Point the app at it**: in `app/src/lib/config.ts`, set
    ```js
    export const ALERTS_API = 'https://rates-alerts.your-name.workers.dev';
    ```
-   then commit and push so GitHub Pages serves the update.
+   then run `npm run deploy:app` from the repo root.
 
 9. **Turn it on on the iPhone**: open Rates **from the Home Screen icon** (not a Safari tab),
    wait a moment for the update, then go to **Settings → Rate alerts**, switch on
@@ -105,14 +105,18 @@ it fails with "Required Worker name missing" (and `npx` offers to download wrang
 If you host the app somewhere other than `https://msimmer.github.io`, change `ALLOWED_ORIGIN`
 (and `VAPID_SUBJECT`) in `wrangler.jsonc` and deploy again.
 
-## Everyday commands (run in `worker/`)
+## Everyday commands
 
-| Command | What it does |
-|---|---|
-| `npm run deploy` | Upload the current code to Cloudflare |
-| `npm run logs` | Stream live logs (leave it running, then tap **Send a test**) |
-| `npm test` | Run the tests (no Cloudflare needed) |
-| `npm run dev` | Run the Worker locally at http://localhost:8787 (needs a `.dev.vars` file, below) |
+The code is TypeScript (`src/`); wrangler compiles and bundles it on `dev` and `deploy`.
+
+| In `worker/` | From the repo root | What it does |
+|---|---|---|
+| `npm run deploy` | `npm run deploy:worker` | Upload the current code to Cloudflare |
+| `npm run logs` | `npm run logs` | Stream live logs (leave it running, then tap **Send a test**) |
+| `npm test` | `npm test` (both packages) | Run the tests (no Cloudflare needed) |
+| `npm run typecheck` | `npm run typecheck` | Typecheck |
+| `npm run build` | `npm run build` | Typecheck and bundle to `dist/` without deploying |
+| `npm run dev` | `npm run dev:worker` | Run the Worker locally at http://localhost:8787 (needs a `.dev.vars` file, below) |
 
 To run locally, create `worker/.dev.vars` (git-ignored) with test keys from `npm run vapid-keys`:
 
@@ -142,7 +146,7 @@ You can also see the Worker, its cron runs, logs and KV data in the Cloudflare d
 
 Within the free plan: one cron run an hour, about 15 rate fetches per run, and a few KV reads and writes a day.
 
-## API (used by `js/alerts.js`)
+## API (used by `app/src/lib/alerts.ts`)
 
 | Request | Body | |
 |---|---|---|
